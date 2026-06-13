@@ -1,0 +1,22 @@
+# Values used when installing ArgoCD via Helm during the one-time bootstrap.
+# After this, ArgoCD manages itself (via the root Application in apps/root.yaml).
+argo-cd:
+  server:
+    # We expose ArgoCD through the Gateway API just like every other service,
+    # so disable the chart's built-in Ingress.
+    ingress:
+      enabled: false
+    service:
+      type: ClusterIP
+
+  configs:
+    cm:
+      url: "https://argocd.monitoring.example.com"
+      exec.enabled: "true"
+    params:
+      # TLS is terminated at the NLB; pods speak plain HTTP.
+      server.insecure: "true"
+    rbac:
+      policy.default: role:readonly
+      policy.csv: |
+        g, admin, role:admin
