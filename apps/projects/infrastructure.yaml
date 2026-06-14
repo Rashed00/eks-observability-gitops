@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Foundation components that everything else depends on (CRDs, gateways, secret sync)."
+  sourceRepos:
+    # The helm-charts repo, served via GitHub Pages.
+    - https://<your-org>.github.io/eks-observability-helm-charts
+    # This gitops repo.
+    - https://github.com/<your-org>/eks-observability-gitops.git
+    # Anything else the umbrella charts pull from (kept open for simplicity;
+    # tighten in a real org by listing each chart's transitive sourceRepo).
+    - "*"
+  destinations:
+    - { namespace: "*", server: https://kubernetes.default.svc }
+  clusterResourceWhitelist:
+    - { group: "*", kind: "*" }
+  namespaceResourceWhitelist:
+    - { group: "*", kind: "*" }
