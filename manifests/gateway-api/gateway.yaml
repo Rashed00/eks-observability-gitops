@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: observability-gateway
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    # Both listeners are HTTP because TLS is terminated at the NLB; intra-cluster
+    # traffic to the Envoy pods is HTTP, then routed by Host header.
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces: { from: All }
+    - name: https
+      protocol: HTTP
+      port: 443
+      allowedRoutes:
+        namespaces: { from: All }

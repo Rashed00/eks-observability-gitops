@@ -1,0 +1,20 @@
+# Basic-auth protection for the remote_write/remote-receive endpoints.
+# Spoke clusters use these endpoints to push telemetry; we don't want them
+# open to the internet. Grafana/ArgoCD have their own login UIs and are
+# intentionally NOT in this policy.
+
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: basic-auth-remote-write
+  namespace: observability
+spec:
+  targetRefs:
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute, name: prometheus }
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute, name: loki }
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute, name: tempo }
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute, name: thanos }
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute, name: alertmanager }
+  basicAuth:
+    users:
+      name: basic-auth-observability
