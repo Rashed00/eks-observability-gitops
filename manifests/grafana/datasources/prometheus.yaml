@@ -1,0 +1,23 @@
+# Points at Thanos query-frontend, NOT at in-cluster Prometheus directly,
+# so dashboards transparently get historical (S3) data too.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  instanceSelector:
+    matchLabels: { dashboards: grafana }
+  datasource:
+    name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: http://thanos-query-frontend.observability.svc.cluster.local:9090
+    isDefault: true
+    access: proxy
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+      exemplarTraceIdDestinations:
+        - { name: traceID, datasourceUid: tempo }

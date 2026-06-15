@@ -1,0 +1,64 @@
+# Replace monitoring.example.com with your real observability domain.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: observability
+  labels:
+    dashboards: grafana   # Grafana Operator selects dashboard/datasource CRs by this label.
+spec:
+  persistentVolumeClaim:
+    spec:
+      accessModes: [ReadWriteMany]
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: efs-sc
+
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        spec:
+          securityContext:
+            runAsUser: 472
+            runAsGroup: 472
+            fsGroup: 472
+          containers:
+            - name: grafana
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits:   { cpu: 500m, memory: 1Gi }
+              env:
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef: { name: grafana-credentials, key: admin-user }
+                - name: GF_SECURITY_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: grafana-credentials, key: admin-password }
+
+  service:
+    spec:
+      type: ClusterIP
+      ports:
+        - name: grafana
+          port: 3000
+          protocol: TCP
+          targetPort: 3000
+
+  config:
+    server:
+      root_url: "https://grafana.monitoring.example.com"
+      domain: "grafana.monitoring.example.com"
+    feature_toggles:
+      enable: traceqlEditor correlations
+    unified_alerting:
+      enabled: "true"
+    analytics:
+      reporting_enabled: "false"
+      check_for_updates: "false"
+    log:
+      mode: console
+      level: info
+    users:
+      allow_sign_up: "false"

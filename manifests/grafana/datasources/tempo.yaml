@@ -1,0 +1,26 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: tempo
+  namespace: observability
+spec:
+  instanceSelector:
+    matchLabels: { dashboards: grafana }
+  datasource:
+    name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo.observability.svc.cluster.local:3200
+    access: proxy
+    editable: false
+    jsonData:
+      httpMethod: GET
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
+      tracesToMetrics:
+        datasourceUid: prometheus
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
