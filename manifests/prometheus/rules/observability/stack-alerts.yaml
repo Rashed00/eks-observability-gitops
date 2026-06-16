@@ -1,0 +1,86 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: observability-stack-alerts
+  namespace: observability
+  labels:
+    prometheus: prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: alloy-alerts
+      rules:
+        - alert: AlloyDown
+          expr: up{job=~".*alloy.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: alloy }
+          annotations:
+            summary: "Grafana Alloy is down"
+            description: "Alloy {{ $labels.instance }} has been down >5m."
+        - alert: AlloyHighMemoryUsage
+          expr: container_memory_working_set_bytes{container="alloy"} / container_spec_memory_limit_bytes{container="alloy"} > 0.85
+          for: 10m
+          labels: { severity: warning, component: alloy }
+          annotations:
+            summary: "Alloy high memory usage"
+            description: "Alloy {{ $labels.pod }} memory > 85%."
+
+    - name: loki-alerts
+      rules:
+        - alert: LokiDown
+          expr: up{job=~".*loki.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: loki }
+          annotations:
+            summary: "Loki component is down"
+            description: "Loki {{ $labels.job }} has been down >5m."
+        - alert: LokiRequestErrors
+          expr: rate(loki_request_duration_seconds_count{status_code=~"5.."}[5m]) > 0.1
+          for: 10m
+          labels: { severity: warning, component: loki }
+          annotations:
+            summary: "Loki high error rate"
+            description: "Loki error rate {{ $value }} errors/s."
+        - alert: LokiIngesterUnhealthy
+          expr: sum(loki_ring_members{state!="ACTIVE",name="ingester"}) > 0
+          for: 5m
+          labels: { severity: critical, component: loki }
+          annotations:
+            summary: "Loki ingester unhealthy"
+
+    - name: tempo-alerts
+      rules:
+        - alert: TempoDown
+          expr: up{job=~".*tempo.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: tempo }
+          annotations:
+            summary: "Tempo is down"
+            description: "Tempo {{ $labels.instance }} has been down >5m."
+
+    - name: thanos-alerts
+      rules:
+        - alert: ThanosCompactorDown
+          expr: up{job=~".*thanos-compactor.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: thanos }
+          annotations:
+            summary: "Thanos Compactor is down"
+        - alert: ThanosQueryDown
+          expr: up{job=~".*thanos-query.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: thanos }
+          annotations:
+            summary: "Thanos Query is down"
+        - alert: ThanosStoreGatewayDown
+          expr: up{job=~".*thanos-storegateway.*"} == 0
+          for: 5m
+          labels: { severity: critical, component: thanos }
+          annotations:
+            summary: "Thanos Store Gateway is down"
+        - alert: ThanosCompactorHalted
+          expr: thanos_compactor_halted == 1
+          for: 5m
+          labels: { severity: critical, component: thanos }
+          annotations:
+            summary: "Thanos Compactor halted"

@@ -1,0 +1,52 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: loki-log-based-alerts
+  namespace: observability
+  labels:
+    prometheus: prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: loki-error-alerts
+      interval: 1m
+      rules:
+        - alert: HighLogErrorRate
+          expr: |
+            sum(rate({job=~".+"} |~ "(?i)error" [5m])) by (namespace, job) > 10
+          for: 5m
+          labels: { severity: warning, component: loki, alert_type: log-based }
+          annotations:
+            summary: "High error rate detected in logs"
+            description: "Namespace {{ $labels.namespace }} job {{ $labels.job }} > 10 errors/s."
+
+        - alert: CriticalErrorsInLogs
+          expr: |
+            count_over_time({job=~".+"} |~ "(?i)(critical|fatal|panic)" [1m]) > 5
+          for: 2m
+          labels: { severity: critical, component: loki, alert_type: log-based }
+          annotations:
+            summary: "Critical errors detected in logs"
+            description: "{{ $value }} critical/fatal/panic messages in last minute."
+
+    - name: loki-application-alerts
+      interval: 1m
+      rules:
+        - alert: High5xxErrorRate
+          expr: |
+            sum(rate({namespace=~".+"} |= "status" |~ "status[=:]\\s*5[0-9]{2}" [5m])) by (namespace) > 5
+          for: 5m
+          labels: { severity: warning, component: application, alert_type: log-based }
+          annotations:
+            summary: "High 5xx error rate in application logs"
+
+    - name: loki-security-alerts
+      interval: 1m
+      rules:
+        - alert: AuthenticationFailures
+          expr: |
+            count_over_time({namespace=~".+"} |~ "(?i)(authentication failed|unauthorized|forbidden|access denied)" [5m]) > 10
+          for: 3m
+          labels: { severity: warning, component: security, alert_type: log-based }
+          annotations:
+            summary: "Multiple authentication failures detected"

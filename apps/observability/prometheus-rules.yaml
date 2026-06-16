@@ -1,0 +1,91 @@
+# Prometheus rules split into four collections by concern: cluster health,
+# observability stack health, infrastructure (storage), and recording rules.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-rules-kubernetes
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    targetRevision: main
+    path: manifests/prometheus/rules/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: false, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 3, backoff: { duration: 5s, factor: 2, maxDuration: 1m } }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-rules-observability
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    targetRevision: main
+    path: manifests/prometheus/rules/observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: false, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-rules-infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    targetRevision: main
+    path: manifests/prometheus/rules/infrastructure
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: false, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-rules-recording
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    targetRevision: main
+    path: manifests/prometheus/rules/recording
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: false, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

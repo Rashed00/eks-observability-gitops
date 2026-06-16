@@ -1,0 +1,87 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-cluster-health
+  namespace: observability
+  labels:
+    prometheus: prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: node-alerts
+      rules:
+        - alert: NodeHighCPU
+          expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+          for: 10m
+          labels: { severity: warning, component: node }
+          annotations:
+            summary: "High CPU usage on node"
+            description: "Node {{ $labels.instance }} CPU usage is {{ $value | printf \"%.1f\" }}%."
+
+        - alert: NodeHighMemory
+          expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+          for: 10m
+          labels: { severity: warning, component: node }
+          annotations:
+            summary: "High memory usage on node"
+            description: "Node {{ $labels.instance }} memory usage is {{ $value | printf \"%.1f\" }}%."
+
+        - alert: NodeDiskSpaceLow
+          expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes) * 100 < 15
+          for: 10m
+          labels: { severity: warning, component: node }
+          annotations:
+            summary: "Low disk space on node"
+            description: "Node {{ $labels.instance }} disk {{ $labels.mountpoint }} has less than 15% free."
+
+        - alert: NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels: { severity: critical, component: node }
+          annotations:
+            summary: "Node not ready"
+            description: "Node {{ $labels.node }} is not ready."
+
+    - name: pod-alerts
+      rules:
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+          for: 5m
+          labels: { severity: warning, component: pod }
+          annotations:
+            summary: "Pod is crash looping"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted {{ $value }} times in the last hour."
+
+        - alert: PodNotReady
+          expr: kube_pod_status_phase{phase=~"Pending|Unknown"} > 0
+          for: 15m
+          labels: { severity: warning, component: pod }
+          annotations:
+            summary: "Pod not ready"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is in {{ $labels.phase }} for >15m."
+
+        - alert: PodOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} > 0
+          for: 0m
+          labels: { severity: warning, component: pod }
+          annotations:
+            summary: "Pod OOMKilled"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} was OOMKilled."
+
+    - name: deployment-alerts
+      rules:
+        - alert: DeploymentReplicasMismatch
+          expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_available
+          for: 15m
+          labels: { severity: warning, component: deployment }
+          annotations:
+            summary: "Deployment replicas mismatch"
+            description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has unavailable replicas."
+
+        - alert: StatefulSetReplicasMismatch
+          expr: kube_statefulset_status_replicas_ready != kube_statefulset_replicas
+          for: 15m
+          labels: { severity: warning, component: statefulset }
+          annotations:
+            summary: "StatefulSet replicas mismatch"
+            description: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has replicas not ready."

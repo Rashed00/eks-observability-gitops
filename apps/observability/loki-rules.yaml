@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki-rules
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    targetRevision: main
+    path: manifests/loki/rules
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: { prune: false, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 3, backoff: { duration: 5s, factor: 2, maxDuration: 1m } }

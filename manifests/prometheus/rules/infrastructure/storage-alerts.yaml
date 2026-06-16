@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: infrastructure-storage-alerts
+  namespace: observability
+  labels:
+    prometheus: prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: pvc-alerts
+      rules:
+        - alert: PVCNearlyFull
+          expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+          for: 10m
+          labels: { severity: warning, component: storage }
+          annotations:
+            summary: "PVC nearly full"
+            description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full."
+        - alert: PVCCriticallyFull
+          expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.95
+          for: 5m
+          labels: { severity: critical, component: storage }
+          annotations:
+            summary: "PVC critically full"
+            description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full!"
+        - alert: PVCInodesFull
+          expr: kubelet_volume_stats_inodes_used / kubelet_volume_stats_inodes > 0.9
+          for: 10m
+          labels: { severity: warning, component: storage }
+          annotations:
+            summary: "PVC inodes nearly exhausted"
+    - name: ebs-alerts
+      rules:
+        - alert: PVCStuckPending
+          expr: kube_persistentvolumeclaim_status_phase{phase="Pending"} > 0
+          for: 10m
+          labels: { severity: warning, component: storage }
+          annotations:
+            summary: "PVC stuck Pending"
+            description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} stuck Pending."

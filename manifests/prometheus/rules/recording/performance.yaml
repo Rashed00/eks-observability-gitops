@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: recording-rules-performance
+  namespace: observability
+  labels:
+    prometheus: prometheus
+    role: recording-rules
+spec:
+  groups:
+    - name: kubernetes-resource-usage
+      interval: 1m
+      rules:
+        - record: node:cpu_utilization:ratio
+          expr: 1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+        - record: node:memory_utilization:ratio
+          expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+        - record: pod:container_cpu_usage:sum
+          expr: sum by(namespace, pod) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+        - record: pod:container_memory_usage:sum
+          expr: sum by(namespace, pod) (container_memory_working_set_bytes{container!=""})
+        - record: namespace:container_cpu_usage:sum
+          expr: sum by(namespace) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+        - record: namespace:container_memory_usage:sum
+          expr: sum by(namespace) (container_memory_working_set_bytes{container!=""})
+
+    - name: observability-stack-metrics
+      interval: 1m
+      rules:
+        - record: loki:ingested_bytes:rate5m
+          expr: sum(rate(loki_distributor_bytes_received_total[5m]))
+        - record: loki:query_latency:p99
+          expr: histogram_quantile(0.99, sum(rate(loki_request_duration_seconds_bucket{route=~"loki_api_v1.*"}[5m])) by (le))
+        - record: tempo:ingested_spans:rate5m
+          expr: sum(rate(tempo_distributor_spans_received_total[5m]))
+        - record: prometheus:scrape_duration:p99
+          expr: histogram_quantile(0.99, sum(rate(prometheus_target_interval_length_seconds_bucket[5m])) by (le, job))
