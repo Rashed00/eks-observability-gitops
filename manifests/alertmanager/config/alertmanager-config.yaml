@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: observability-alerts
+  namespace: observability
+spec:
+  route:
+    groupBy: [alertname, severity, component]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 12h
+    receiver: default
+    routes:
+      - receiver: critical-alerts
+        matchers:
+          - { name: severity, matchType: '=', value: critical }
+        groupWait: 10s
+        repeatInterval: 1h
+      - receiver: warning-alerts
+        matchers:
+          - { name: severity, matchType: '=', value: warning }
+        groupWait: 5m
+        repeatInterval: 4h
+      - receiver: observability-team
+        matchers:
+          - { name: component, matchType: '=~', value: 'alloy|loki|tempo|thanos|prometheus' }
+        groupWait: 1m
+        repeatInterval: 2h
+      - receiver: storage-alerts
+        matchers:
+          - { name: component, matchType: '=', value: storage }
+        groupWait: 5m
+        repeatInterval: 6h
+
+  receivers:
+    - name: default
+      # No webhook by default - configure once you have a real destination.
+    - name: critical-alerts
+      # slackConfigs:
+      #   - apiURL: { name: alertmanager-slack, key: webhook-url }
+      #     channel: '#alerts-critical'
+      #     title: '{{ template "slack.title" . }}'
+      #     text:  '{{ template "slack.text"  . }}'
+    - name: warning-alerts
+    - name: observability-team
+    - name: storage-alerts
+
+  inhibitRules:
+    # If a node is NotReady, suppress warnings from the same node.
+    - sourceMatch: [ { name: alertname, matchType: '=', value: NodeNotReady } ]
+      targetMatch: [ { name: severity,  matchType: '=', value: warning } ]
+      equal: [instance]
+    # A critical alert suppresses paired warnings on the same component.
+    - sourceMatch: [ { name: severity, matchType: '=', value: critical } ]
+      targetMatch: [ { name: severity, matchType: '=', value: warning } ]
+      equal: [alertname, namespace]
