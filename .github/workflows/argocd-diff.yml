@@ -1,0 +1,88 @@
+name: ArgoCD app diff on PR
+
+# Computes `argocd app diff` for each Application changed by the PR and posts
+# the result as a PR comment. Optional - only runs if the repo has the
+# required vars/secrets configured.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'manifests/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ARGOCD_SERVER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: kubeconfig
+        run: aws eks update-kubeconfig --name "${{ vars.CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
+
+      - name: Install argocd CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo install argocd /usr/local/bin/
+
+      - name: Detect changed apps
+        id: changed
+        run: |
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- apps/ \
+            | grep -E '\.yaml$' \
+            | xargs -I{} sh -c "grep -l '^kind: Application' {} 2>/dev/null" \
+            | xargs -I{} sh -c "awk '/^  name:/{print \$2; exit}' {}" \
+            | sort -u)
+          echo "apps=$(echo "$changed" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: argocd login
+        id: login
+        continue-on-error: true
+        env:
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          argocd login "${{ vars.ARGOCD_SERVER }}" --grpc-web --auth-token "${ARGOCD_AUTH_TOKEN}"
+
+      - name: Skip gracefully when ArgoCD is unreachable
+        if: steps.login.outcome != 'success'
+        run: |
+          echo '_Skipping diff: ArgoCD server is unreachable or login failed._' > diff.txt
+
+      - name: argocd app diff (changed apps)
+        id: diff
+        if: steps.login.outcome == 'success'
+        run: |
+          : > diff.txt
+          if [[ -z "${{ steps.changed.outputs.apps }}" ]]; then
+            echo '_No changed ArgoCD Applications in this PR._' > diff.txt
+            exit 0
+          fi
+          for app in ${{ steps.changed.outputs.apps }}; do
+            echo "### $app" >> diff.txt
+            echo '```diff' >> diff.txt
+            argocd app diff "$app" --refresh >> diff.txt 2>&1 || true
+            echo '```' >> diff.txt
+          done
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('diff.txt', 'utf8') || '_No diff_';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });

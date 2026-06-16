@@ -1,0 +1,116 @@
+name: PR Validate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'manifests/**'
+      - 'bootstrap/**'
+      - '.github/workflows/pr-validate.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KUBECONFORM_VERSION: 'v0.6.7'
+  K8S_VERSION: '1.34.0'
+  KUSTOMIZE_VERSION: '5.4.3'
+
+jobs:
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Run yamllint
+        run: >-
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 200}}}'
+          apps/ manifests/ bootstrap/
+
+  kustomize-build:
+    name: kustomize build (${{ matrix.overlay }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        overlay:
+          - manifests/gateway-api
+          - manifests/external-secrets/base
+          - manifests/external-secrets/secrets
+          - manifests/alertmanager
+          - manifests/prometheus/rules/kubernetes
+          - manifests/prometheus/rules/observability
+          - manifests/prometheus/rules/infrastructure
+          - manifests/prometheus/rules/recording
+          - manifests/loki/rules
+          - manifests/grafana/instance
+          - manifests/grafana/datasources
+          - manifests/grafana/folders
+          - manifests/grafana/dashboards/kubernetes
+          - manifests/grafana/dashboards/infrastructure
+          - manifests/grafana/dashboards/databases
+          - manifests/grafana/dashboards/logs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kustomize
+        run: |
+          curl -fsSL -o /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp
+          sudo install /tmp/kustomize /usr/local/bin/
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL -o /tmp/kc.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kc.tar.gz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/
+
+      - name: kustomize build
+        run: |
+          mkdir -p /tmp/rendered
+          kustomize build "${{ matrix.overlay }}" > /tmp/rendered/manifests.yaml
+
+      - name: kubeconform
+        run: |
+          kubeconform \
+            -kubernetes-version "${K8S_VERSION}" \
+            -strict \
+            -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{ .Group }}/{{ .ResourceKind }}_{{ .ResourceAPIVersion }}.json' \
+            -summary \
+            /tmp/rendered/manifests.yaml
+
+  argo-apps-syntax:
+    name: argocd Application syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL -o /tmp/kc.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kc.tar.gz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/
+
+      - name: Validate all ArgoCD Application + AppProject YAMLs
+        run: |
+          kubeconform \
+            -kubernetes-version "${K8S_VERSION}" \
+            -strict \
+            -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{ .Group }}/{{ .ResourceKind }}_{{ .ResourceAPIVersion }}.json' \
+            -summary \
+            apps/
