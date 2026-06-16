@@ -1,0 +1,16 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: loki-logs
+  namespace: observability
+spec:
+  instanceSelector:
+    matchLabels: { dashboards: grafana }
+  folder: Logs
+  resyncPeriod: 5m
+  grafanaCom:
+    id: 13639
+    revision: 2
+  datasources:
+    - inputName: DS_LOKI
+      datasourceName: Loki

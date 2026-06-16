@@ -1,0 +1,17 @@
+# Pulls https://grafana.com/grafana/dashboards/15757 (k8s / views / global) at apply time.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: k8s-views-global
+  namespace: observability
+spec:
+  instanceSelector:
+    matchLabels: { dashboards: grafana }
+  folder: Kubernetes
+  resyncPeriod: 5m
+  grafanaCom:
+    id: 15757
+    revision: 37
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: Prometheus

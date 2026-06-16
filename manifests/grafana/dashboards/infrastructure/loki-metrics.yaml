@@ -1,0 +1,15 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: loki-metrics
+  namespace: observability
+spec:
+  instanceSelector:
+    matchLabels: { dashboards: grafana }
+  folder: Infrastructure
+  resyncPeriod: 5m
+  grafanaCom:
+    id: 17781
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: Prometheus
