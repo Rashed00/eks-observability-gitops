@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://<your-org>.github.io/eks-observability-helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 1.0.0
+    targetRevision: 1.0.1
     helm:
       releaseName: prometheus
   destination:
