@@ -9,7 +9,7 @@ spec:
   parentRefs:
     - { name: observability-gateway, namespace: observability}
   hostnames:
-    - "thanos.monitoring.example.com"
+    - "thanos.monitoring.relsayed.online"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

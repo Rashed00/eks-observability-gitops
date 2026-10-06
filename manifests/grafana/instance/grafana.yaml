@@ -1,4 +1,4 @@
-# Replace monitoring.example.com with your real observability domain.
+# Replace monitoring.relsayed.online with your real observability domain.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
@@ -48,8 +48,8 @@ spec:
 
   config:
     server:
-      root_url: "https://grafana.monitoring.example.com"
-      domain: "grafana.monitoring.example.com"
+      root_url: "https://grafana.monitoring.relsayed.online"
+      domain: "grafana.monitoring.relsayed.online"
     feature_toggles:
       enable: traceqlEditor correlations
     unified_alerting:

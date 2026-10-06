@@ -13,7 +13,7 @@ metadata:
 spec:
   project: observability
   source:
-    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    repoURL: https://github.com/Rashed00/eks-observability-gitops.git
     targetRevision: main
     path: manifests/prometheus/rules/kubernetes
   destination:
@@ -36,7 +36,7 @@ metadata:
 spec:
   project: observability
   source:
-    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    repoURL: https://github.com/Rashed00/eks-observability-gitops.git
     targetRevision: main
     path: manifests/prometheus/rules/observability
   destination:
@@ -58,7 +58,7 @@ metadata:
 spec:
   project: observability
   source:
-    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    repoURL: https://github.com/Rashed00/eks-observability-gitops.git
     targetRevision: main
     path: manifests/prometheus/rules/infrastructure
   destination:
@@ -80,7 +80,7 @@ metadata:
 spec:
   project: observability
   source:
-    repoURL: https://github.com/<your-org>/eks-observability-gitops.git
+    repoURL: https://github.com/Rashed00/eks-observability-gitops.git
     targetRevision: main
     path: manifests/prometheus/rules/recording
   destination:

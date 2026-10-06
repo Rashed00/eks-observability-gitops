@@ -10,8 +10,8 @@ metadata:
 spec:
   description: "LGTM stack: Prometheus + Thanos, Loki, Tempo, Grafana, Alloy, rules, dashboards."
   sourceRepos:
-    - https://<your-org>.github.io/eks-observability-helm-charts
-    - https://github.com/<your-org>/eks-observability-gitops.git
+    - https://rashed00.github.io/eks-observability-helm-charts
+    - https://github.com/Rashed00/eks-observability-gitops.git
     - "*"
   destinations:
     - { namespace: "*", server: https://kubernetes.default.svc }

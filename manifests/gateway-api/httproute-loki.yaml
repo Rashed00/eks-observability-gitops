@@ -9,7 +9,7 @@ spec:
   parentRefs:
     - { name: observability-gateway, namespace: observability }
   hostnames:
-    - "loki.monitoring.example.com"
+    - "loki.monitoring.relsayed.online"
   rules:
     - matches:
         - path: { type: PathPrefix, value: / }

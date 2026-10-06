@@ -11,7 +11,7 @@ argo-cd:
 
   configs:
     cm:
-      url: "https://argocd.monitoring.example.com"
+      url: "https://argocd.monitoring.relsayed.online"
       exec.enabled: "true"
     params:
       # TLS is terminated at the NLB; pods speak plain HTTP.

@@ -10,7 +10,7 @@ metadata:
 spec:
   project: infrastructure
   source:
-    repoURL: https://<your-org>.github.io/eks-observability-helm-charts
+    repoURL: https://rashed00.github.io/eks-observability-helm-charts
     chart: metrics-server
     targetRevision: 1.0.0
     helm:

@@ -11,9 +11,9 @@ spec:
   description: "Foundation components that everything else depends on (CRDs, gateways, secret sync)."
   sourceRepos:
     # The helm-charts repo, served via GitHub Pages.
-    - https://<your-org>.github.io/eks-observability-helm-charts
+    - https://rashed00.github.io/eks-observability-helm-charts
     # This gitops repo.
-    - https://github.com/<your-org>/eks-observability-gitops.git
+    - https://github.com/Rashed00/eks-observability-gitops.git
     # Anything else the umbrella charts pull from (kept open for simplicity;
     # tighten in a real org by listing each chart's transitive sourceRepo).
     - "*"
