@@ -7,7 +7,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "6"
 spec:
   parentRefs:
-    - { name: observability-gateway, namespace: observability, sectionName: http }
+    - { name: observability-gateway, namespace: observability }
   hostnames:
     - "argocd.monitoring.example.com"
   rules:

@@ -10,7 +10,6 @@ spec:
   parentRefs:
     - name: observability-gateway
       namespace: observability
-      sectionName: http
   hostnames:
     - "grafana.monitoring.example.com"
   rules:
