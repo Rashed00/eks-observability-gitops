@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://rashed00.github.io/eks-observability-helm-charts
     chart: metrics-server
-    targetRevision: 1.0.0
+    targetRevision: 1.0.3
     helm:
       releaseName: metrics-server
   destination:
