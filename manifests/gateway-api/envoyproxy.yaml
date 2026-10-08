@@ -34,7 +34,7 @@ spec:
           service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
           service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
           # TLS termination at the NLB.
-          service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-central-1:777000838881:certificate/eee3f0dd-2fa6-49e9-8961-5a32204943e8"
+          service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-central-1:777000838881:certificate/21f4ee13-b122-4bda-8f58-5133e1081cc0"
           service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
           service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
           service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "http"
