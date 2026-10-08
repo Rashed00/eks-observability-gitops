@@ -1,0 +1,111 @@
+name: Bump targetRevision
+
+# Started by the helm-charts repo (release.yml) after it publishes a new chart
+# version. Waits until that version is really in the Helm repo, points the
+# matching ArgoCD Application(s) at it, and pushes to main. ArgoCD then
+# deploys it.
+#
+# Can also be run by hand: Actions -> Bump targetRevision -> Run workflow,
+# with a chart name and version (useful for testing or catching up).
+#
+# Setup (one-time):
+#   Settings -> Actions -> General -> Workflow permissions: "Read and write"
+
+on:
+  repository_dispatch:
+    types: [chart-released]
+  workflow_dispatch:
+    inputs:
+      chart:
+        description: 'Chart name (folder name in the helm-charts repo, e.g. loki)'
+        required: true
+      version:
+        description: 'Chart version to deploy (e.g. 1.0.3)'
+        required: true
+
+permissions:
+  contents: write
+
+# One at a time, so two charts released together cannot clash on the push.
+concurrency:
+  group: bump-target-revision
+  cancel-in-progress: false
+
+env:
+  HELM_REPO: https://rashed00.github.io/eks-observability-helm-charts
+  # Never put these straight into a run: script, they come from outside.
+  CHART: ${{ github.event.client_payload.chart || inputs.chart }}
+  VERSION: ${{ github.event.client_payload.version || inputs.version }}
+  SOURCE_SHA: ${{ github.event.client_payload.source_sha || '' }}
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the input
+        run: |
+          echo "Chart: ${CHART}  Version: ${VERSION}"
+          [[ "${CHART}"   =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || { echo "::error::Bad chart name '${CHART}'"; exit 1; }
+          [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::Bad version '${VERSION}'"; exit 1; }
+
+      # GitHub Pages takes a minute or more to publish, and caches index.yaml
+      # for up to 10 minutes. ArgoCD would show an error if we pointed it at a
+      # version that is not there yet.
+      - name: Wait until the chart version is in the Helm repo
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsSL -H 'Cache-Control: no-cache' "${HELM_REPO}/index.yaml?t=$(date +%s)" -o /tmp/index.yaml \
+               && yq -e ".entries[\"${CHART}\"][] | select(.version == \"${VERSION}\")" /tmp/index.yaml >/dev/null 2>&1; then
+              echo "${CHART} ${VERSION} is published."
+              exit 0
+            fi
+            echo "  not published yet (${i}/45)..."
+            sleep 20
+          done
+          echo "::error::${CHART} ${VERSION} never showed up in ${HELM_REPO}/index.yaml. Check the release in the helm-charts repo."
+          exit 1
+
+      - name: Update targetRevision
+        id: update
+        run: |
+          chmod +x scripts/ci/set-target-revision.sh
+          scripts/ci/set-target-revision.sh "${CHART}" "${VERSION}" apps > /tmp/changed.txt
+          cat /tmp/changed.txt
+          if [[ -s /tmp/changed.txt ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Nothing to change for ${CHART} ${VERSION}."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/
+          body="Released from Rashed00/eks-observability-helm-charts"
+          if [[ -n "${SOURCE_SHA}" ]]; then body="${body}@${SOURCE_SHA:0:7}"; fi
+          git commit -m "chore(apps): bump ${CHART} targetRevision to ${VERSION}" -m "${body}"
+          for i in 1 2 3; do
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Push rejected (main moved). Rebasing and retrying (${i}/3)..."
+            git pull --rebase origin main
+          done
+          echo "::error::Could not push to main. Is main protected?"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ${CHART} → ${VERSION}"
+            if [[ -s /tmp/changed.txt ]]; then
+              echo '```'; cat /tmp/changed.txt; echo '```'
+            else
+              echo "No Application changed."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
